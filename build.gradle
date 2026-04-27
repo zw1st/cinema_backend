@@ -1,7 +1,8 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.2'
+	id 'org.springframework.boot' version '3.5.8'
 	id 'io.spring.dependency-management' version '1.1.7'
+    id "org.liquibase.gradle" version "2.2.2" apply false
 }
 
 group = 'com.example'
@@ -32,6 +33,8 @@ repositories {
 
 ext {
     springdocVersion = "2.8.11"
+    h2Version = "2.4.240"
+    //liquibaseVersion = "4.33.0"
     mockitoVersion = "5.19.0"
 }
 
@@ -40,8 +43,15 @@ configurations {
 }
 
 dependencies {
-    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    runtimeOnly "com.h2database:h2:${h2Version}"
+    //runtimeOnly "org.liquibase:liquibase-core:${liquibaseVersion}"
+
+    developmentOnly "org.springframework.boot:spring-boot-devtools"
+
 
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -57,3 +67,5 @@ tasks.named("test") {
     jvmArgs += "-Xshare:off"
     jvmArgs += "-javaagent:${configurations.mockitoAgent.asPath}"
 }
+
+//apply from: "build.migrations.gradle"
