@@ -34,28 +34,15 @@ public class MovieService {
     }
 
     @Transactional(readOnly = true)
+    public List<MovieRs> getAll(String title) {
+        return MovieRs.fromList(repository.findByTitleContainingIgnoreCase(title));
+    }
+
+    @Transactional(readOnly = true)
     public MovieRs get(Long id) {
         final MovieEntity entity = getEntity(id);
         return MovieRs.from(entity);
     }
-
-    // @Transactional
-    // public MovieRs create(MovieRq dto) {
-    // MovieEntity entity = new MovieEntity(
-    // dto.title(),
-    // dto.releaseDate(),
-    // dto.isActive(),
-    // dto.rating(),
-    // dto.duration(),
-    // dto.ageRating(),
-    // dto.description(),
-    // dto.posterImageUrl(),
-    // dto.genres(),
-    // dto.actors(),
-    // dto.directors());
-    // entity = repository.save(entity);
-    // return MovieRs.from(entity);
-    // }
 
     public MovieRs create(MovieRq dto) {
         return transactionTemplate.execute(status -> {
@@ -77,20 +64,6 @@ public class MovieService {
             return MovieRs.from(entity); // результат вернётся из метода
         });
     }
-
-    // @Transactional
-    // public MovieRs update(Long id, MovieRs dto) {
-    // StudentEntity entity = getEntity(id);
-    // entity.setLastName(dto.lastName());
-    // entity.setFirstName(dto.firstName());
-    // entity.setEmail(dto.email());
-    // entity.setPhone(dto.phone());
-    // entity.setBdate(LocalDate.parse(dto.bdate()));
-    // entity.setGroup(typeService.getEntity(dto.groupId()));
-    // entity.setImage(dto.image());
-    // entity = repository.save(entity);
-    // return StudentRs.from(entity);
-    // }
 
     @Transactional
     public MovieRs delete(Long id) {

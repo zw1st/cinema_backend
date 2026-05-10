@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.example.demo.configuration.Constants;
 import com.example.demo.service.MovieService;
@@ -26,8 +27,12 @@ public class MovieController {
     }
 
     @GetMapping
-    public List<MovieRs> getAll() {
-        return movieService.getAll();
+    public List<MovieRs> getAll(
+            @RequestParam(name = "title", required = false) String title) {
+        if (title == null || title.isEmpty()) {
+            return movieService.getAll();
+        }
+        return movieService.getAll(title);
     }
 
     @GetMapping("/{id}")

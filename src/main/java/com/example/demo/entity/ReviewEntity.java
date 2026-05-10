@@ -35,6 +35,10 @@ public class ReviewEntity extends BaseEntity {
     @ManyToOne
     private MovieEntity movie;
 
+    public ReviewEntity() {
+        super();
+    }
+
     public ReviewEntity(String author, short grade, LocalDate date, String title, String text, MovieEntity movie) {
         this.author = author;
         this.grade = grade;
