@@ -564,3 +564,7 @@ Wrong user name or password [28000-240]
 	at org.h2.message.DbException.getJdbcSQLException(DbException.java:522)
 	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
 	... 72 more
+2026-05-11 12:36:47.113639+04:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Синтаксическая ошибка в выражении SQL "[*]tuncate table SEAT"; ожидалось "TRUNCATE"
+Syntax error in SQL statement "[*]tuncate table SEAT"; expected "TRUNCATE"; SQL statement:
+tuncate table SEAT [42001-240]

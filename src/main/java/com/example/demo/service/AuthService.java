@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.api.user.SignInRq;
@@ -13,6 +13,7 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 
 @Service
+@Profile("prod")
 public class AuthService {
     private final FirebaseAuth firebaseAuth;
     private final UserService userService;

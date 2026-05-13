@@ -9,13 +9,13 @@ import java.util.stream.StreamSupport;
 public record SeatTypeRs(
         Long id,
         String name,
-        @JsonProperty("additional_price") BigDecimal additionalPrice) {
+        @JsonProperty("additional_price") BigDecimal coef) {
 
     public static SeatTypeRs from(SeatType entity) {
         return new SeatTypeRs(
                 entity.getId(),
                 entity.getName(),
-                entity.getAdditionalPrice());
+                entity.getCoef());
     }
 
     public static List<SeatTypeRs> fromList(Iterable<SeatType> entities) {

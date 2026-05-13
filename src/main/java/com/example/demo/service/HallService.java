@@ -39,9 +39,8 @@ public class HallService {
 
     @Transactional
     public HallRs create(HallRq dto) {
-        HallEntity entity = new HallEntity(dto.name());
-        entity = repository.save(entity);
-        return HallRs.from(entity);
-    };
+        HallEntity entity = new HallEntity(dto.name(), dto.totalRows(), dto.totalCols());
+        return HallRs.from(repository.save(entity));
+    }
 
 }

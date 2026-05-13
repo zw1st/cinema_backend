@@ -1,0 +1,12 @@
+spring:
+    profiles:
+        active: prod
+
+server:
+    port: 8080
+
+app:
+    cinema:
+        open-time: "09:00"
+        close-time: "23:00"
+        cleanup-buffer-minutes: 30

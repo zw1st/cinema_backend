@@ -13,12 +13,12 @@ public class SeatType extends BaseEntity {
     @Column(nullable = false)
     String name;
 
-    @Column(name = "additional_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal additionalPrice;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal coef;
 
-    public SeatType(String name, BigDecimal additionalPrice) {
+    public SeatType(String name, BigDecimal coef) {
         this.name = name;
-        this.additionalPrice = additionalPrice;
+        this.coef = coef;
     }
 
     public SeatType() {
@@ -33,12 +33,12 @@ public class SeatType extends BaseEntity {
         this.name = name;
     }
 
-    public BigDecimal getAdditionalPrice() {
-        return additionalPrice;
+    public BigDecimal getCoef() {
+        return coef;
     }
 
-    public void setAdditionalPrice(BigDecimal additionalPrice) {
-        this.additionalPrice = additionalPrice;
+    public void setCoef(BigDecimal coef) {
+        this.coef = coef;
     }
 
 }

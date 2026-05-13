@@ -2,6 +2,7 @@ package com.example.demo.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -13,11 +14,12 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig {
+@Profile("prod")
+public class ProdSecurityConfig {
 
     private final FirebaseAuthFilter firebaseAuthFilter;
 
-    public SecurityConfig(FirebaseAuthFilter firebaseAuthFilter) {
+    public ProdSecurityConfig(FirebaseAuthFilter firebaseAuthFilter) {
         this.firebaseAuthFilter = firebaseAuthFilter;
     }
 
@@ -44,6 +46,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Profile("prod")
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring()
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**"));

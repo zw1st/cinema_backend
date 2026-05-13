@@ -1,12 +1,15 @@
 package com.example.demo.api.user;
 
 import jakarta.validation.Valid;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.service.AuthService;
 
 @RestController
 @RequestMapping("/auth")
+@Profile("prod")
 public class AuthController {
 
     private final AuthService authService;

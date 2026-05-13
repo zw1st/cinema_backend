@@ -39,7 +39,7 @@ public class SeatTypeService {
 
     @Transactional
     public SeatTypeRs create(SeatTypeRq dto) {
-        SeatType entity = new SeatType(dto.name(), dto.additionalPrice());
+        SeatType entity = new SeatType(dto.name(), dto.coef());
         entity = repository.save(entity);
         return SeatTypeRs.from(entity);
 
@@ -49,7 +49,7 @@ public class SeatTypeService {
     public SeatTypeRs update(Long id, SeatTypeRq dto) {
         final SeatType entity = getEntity(id);
         // Обновляем только цену, имя типа меняем редко (через миграцию)
-        entity.setAdditionalPrice(dto.additionalPrice());
+        entity.setCoef(dto.coef());
         return SeatTypeRs.from(repository.save(entity));
     }
 }
