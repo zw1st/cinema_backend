@@ -51,4 +51,16 @@ public class AppProperties {
     public boolean isWithinWorkingHours(LocalTime time) {
         return !time.isBefore(openTime) && !time.isAfter(closeTime);
     }
+
+    @Min(1)
+    private int reservationTimer = 15; // время в минутах
+
+    public int getReservationTimer() {
+        return reservationTimer;
+    }
+
+    public void setReservationTimer(int reservationTimer) {
+        this.reservationTimer = reservationTimer;
+    }
+
 }

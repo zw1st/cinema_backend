@@ -10,3 +10,4 @@ app:
         open-time: "09:00"
         close-time: "23:00"
         cleanup-buffer-minutes: 30
+        reservation-timer: 1

@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.api.user.SignInRq;
@@ -12,7 +11,6 @@ import com.example.demo.api.user.UpdateUserRq;
 import com.example.demo.api.user.UserRs;
 import com.example.demo.entity.UserEntity;
 import com.example.demo.exception.NotFoundException;
-import com.example.demo.exception.UserNotFoundException;
 import com.example.demo.repository.UserRepository;
 
 @Service

@@ -11,6 +11,8 @@ spring:
     jpa:
         properties:
             hibernate:
+                jdbc:
+                    lock_timeout: 5000
                 dialect: org.hibernate.dialect.H2Dialect
                 format_sql: false
         hibernate:

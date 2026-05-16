@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -17,14 +18,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 public class DevSecurityConfig {
 
     @Bean
-    public SecurityFilterChain devFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain devFilterChain(HttpSecurity http, DevMockAuthFilter devMockAuthFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(request -> null))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 🔹 РАЗРЕШАЕМ ВСЁ без аутентификации
-                        .anyRequest().permitAll());
+                        .anyRequest().permitAll())
+                .addFilterBefore(devMockAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         // 🔹 FirebaseAuthFilter НЕ добавляем — он не нужен в dev
         return http.build();
     }
