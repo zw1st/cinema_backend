@@ -9,12 +9,16 @@ public record OrderRs(
         Long id,
         String status,
         @JsonProperty("total_amount") BigDecimal totalAmount,
-        @JsonProperty("created_at") Instant createdAt) {
+        @JsonProperty("created_at") Instant createdAt,
+        @JsonProperty("exchange_from_order_id") Long exchangeFromOrderId,
+        @JsonProperty("adjustment_amount") BigDecimal adjustmentAmount) {
     public static OrderRs from(OrderEntity order) {
         return new OrderRs(
                 order.getId(),
                 order.getStatus().name(),
                 order.getTotalAmount(),
-                order.getCreatedAt());
+                order.getCreatedAt(),
+                order.getExchangeFromOrderId(),
+                order.getAdjustmentAmount());
     }
 }

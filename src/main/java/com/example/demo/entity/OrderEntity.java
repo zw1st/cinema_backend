@@ -31,21 +31,29 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "customer_email", nullable = false, length = 255)
     private String customerEmail;
 
+    @Column(name = "exchange_from_order_id")
+    private Long exchangeFromOrderId; // Nullable, ссылка на старый заказ
+
+    @Column(name = "adjustment_amount", precision = 10, scale = 2)
+    private BigDecimal adjustmentAmount = BigDecimal.ZERO;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
-    public OrderEntity() {
-        super();
-    }
-
     public OrderEntity(BigDecimal totalAmount, Instant createdAt, UserEntity user, String customerEmail,
-            OrderStatus status) {
+            Long exchangeFromOrderId, BigDecimal adjustmentAmount, OrderStatus status) {
         this.totalAmount = totalAmount;
         this.createdAt = createdAt;
         this.user = user;
         this.customerEmail = customerEmail;
+        this.exchangeFromOrderId = exchangeFromOrderId;
+        this.adjustmentAmount = adjustmentAmount;
         this.status = status;
+    }
+
+    public OrderEntity() {
+        super();
     }
 
     public BigDecimal getTotalAmount() {
@@ -86,6 +94,22 @@ public class OrderEntity extends BaseEntity {
 
     public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public BigDecimal getAdjustmentAmount() {
+        return adjustmentAmount;
+    }
+
+    public void setAdjustmentAmount(BigDecimal adjustmentAmount) {
+        this.adjustmentAmount = adjustmentAmount;
+    }
+
+    public Long getExchangeFromOrderId() {
+        return exchangeFromOrderId;
+    }
+
+    public void setExchangeFromOrderId(Long exchangeFromOrderId) {
+        this.exchangeFromOrderId = exchangeFromOrderId;
     }
 
     // @Column(name = "discount_coef", precision = 5, scale = 2)

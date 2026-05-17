@@ -1,6 +1,6 @@
 spring:
     profiles:
-        active: prod
+        active: dev
 
 server:
     port: 8080
@@ -10,4 +10,7 @@ app:
         open-time: "09:00"
         close-time: "23:00"
         cleanup-buffer-minutes: 30
-        reservation-timer: 1
+        reservation-timer: 4
+        ticket-per-order: 5
+        no-refund-before-session: 60
+        timezone: Europe/Moscow

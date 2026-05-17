@@ -6,6 +6,8 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.TimeZone;
 
 @Component
 @ConfigurationProperties(prefix = "app.cinema")
@@ -20,6 +22,38 @@ public class AppProperties {
 
     @Min(0)
     private int cleanupBufferMinutes = 30; // значение по умолчанию
+
+    @Min(1)
+    private int ticketPerOrder = 5;
+
+    @Min(0)
+    private int noRefundBeforeSession = 60;
+
+    private ZoneId timezone;
+
+    public ZoneId getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(ZoneId timezone) {
+        this.timezone = timezone;
+    }
+
+    public int getTicketPerOrder() {
+        return ticketPerOrder;
+    }
+
+    public void setTicketPerOrder(int ticketPerOrder) {
+        this.ticketPerOrder = ticketPerOrder;
+    }
+
+    public int getNoRefundBeforeSession() {
+        return noRefundBeforeSession;
+    }
+
+    public void setNoRefundBeforeSession(int noRefundBeforeSession) {
+        this.noRefundBeforeSession = noRefundBeforeSession;
+    }
 
     // 🔹 Геттеры (обязательно для @ConfigurationProperties)
     public LocalTime getOpenTime() {

@@ -39,4 +39,9 @@ public interface TicketRepository extends JpaRepository<TicketEntity, Long> {
 
         Optional<TicketEntity> findBySessionIdAndRowNumAndColNumAndStatus(
                         Long sessionId, Integer row, Integer col, TicketStatus status);
+
+        List<TicketEntity> findByOrderIdAndIdIn(Long orderId, List<Long> ids);
+
+        List<TicketEntity> findByIdIn(List<Long> ids);
+
 }
