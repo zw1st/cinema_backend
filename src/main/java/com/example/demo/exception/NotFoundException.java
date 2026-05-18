@@ -8,4 +8,8 @@ public class NotFoundException extends RuntimeException {
     public <T> NotFoundException(Class<T> entClass, String fieldName, String value) {
         super(String.format("%s with %s '%s' is not found", entClass.getSimpleName(), fieldName, value));
     }
+
+    public <T> NotFoundException(String value) {
+        super(value);
+    }
 }

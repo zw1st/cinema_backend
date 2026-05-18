@@ -2,6 +2,7 @@ package com.example.demo.entity;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 import com.example.demo.entity.enumeration.OrderStatus;
 
@@ -12,6 +13,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -40,6 +42,13 @@ public class OrderEntity extends BaseEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
+
+    @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
+    private List<TicketEntity> tickets; // никаких сеттеров!
+
+    public List<TicketEntity> getTickets() {
+        return tickets;
+    }
 
     public OrderEntity(BigDecimal totalAmount, Instant createdAt, UserEntity user, String customerEmail,
             Long exchangeFromOrderId, BigDecimal adjustmentAmount, OrderStatus status) {

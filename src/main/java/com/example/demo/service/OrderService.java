@@ -26,7 +26,6 @@ import com.example.demo.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -74,7 +73,7 @@ public class OrderService {
             // 1. Блокируем, если место активно забронировано или оплачено
             boolean isTaken = ticketRepository.existsBySessionIdAndRowNumAndColNumAndStatusIn(
                     session.getId(), coord.row(), coord.col(),
-                    List.of(TicketStatus.RESERVED, TicketStatus.PAID));
+                    List.of(TicketStatus.RESERVED, TicketStatus.PAID, TicketStatus.EXCHANGING));
 
             if (isTaken) {
                 throw new ValidationException("Seat [%d, %d] is not available".formatted(coord.row(), coord.col()));
@@ -144,10 +143,32 @@ public class OrderService {
         }
         ticketRepository.saveAll(tickets);
 
+        if (order.getExchangeFromOrderId() != null) {
+            Long oldOrderId = order.getExchangeFromOrderId();
+            List<TicketEntity> exchangingTickets = ticketRepository.findByOrderIdAndStatus(oldOrderId,
+                    TicketStatus.EXCHANGING);
+
+            // Отменяем заблокированные билеты
+            exchangingTickets.forEach(t -> t.setStatus(TicketStatus.CANCELLED));
+            ticketRepository.saveAll(exchangingTickets);
+
+            // Пересчитываем старый заказ
+            OrderEntity oldOrder = orderRepository.findById(oldOrderId)
+                    .orElseThrow(() -> new NotFoundException("Original order not found"));
+            BigDecimal refundAmount = order.getAdjustmentAmount().abs();
+            oldOrder.setTotalAmount(oldOrder.getTotalAmount().subtract(refundAmount));
+            // oldOrder.setTotalAmount(oldOrder.getTotalAmount().subtract(refundAmount));
+
+            boolean hasPaidLeft = !ticketRepository.findByOrderIdAndStatus(oldOrderId, TicketStatus.PAID).isEmpty();
+            if (!hasPaidLeft)
+                oldOrder.setStatus(OrderStatus.CANCELLED);
+
+            orderRepository.save(oldOrder);
+        }
+
         return OrderRs.from(order);
     }
 
-    // отмена бронирования
     @Transactional
     public void cancelBooking(Long orderId, List<Long> ticketIdsToCancel, Long userId) {
         // 1. Проверка владения и статуса заказа
@@ -156,6 +177,14 @@ public class OrderService {
 
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new ValidationException("Can only cancel PENDING bookings");
+        }
+
+        // Если отменяется заявка на обмен → восстанавливаем старые билеты
+        if (order.getExchangeFromOrderId() != null) {
+            List<TicketEntity> exchangingTickets = ticketRepository.findByOrderIdAndStatus(
+                    order.getExchangeFromOrderId(), TicketStatus.EXCHANGING);
+            exchangingTickets.forEach(t -> t.setStatus(TicketStatus.PAID));
+            ticketRepository.saveAll(exchangingTickets);
         }
 
         // 2. Определение списка билетов к отмене
@@ -223,6 +252,9 @@ public class OrderService {
         // 3. Валидация каждого билета
         LocalDateTime now = LocalDateTime.now(appProperties.getTimezone());
         for (TicketEntity t : ticketsToRefund) {
+            if (t.getStatus() == TicketStatus.EXCHANGING) {
+                throw new ValidationException("Ticket %d is currently part of a pending exchange".formatted(t.getId()));
+            }
             if (t.getStatus() != TicketStatus.PAID) {
                 throw new ValidationException("Ticket %d is not PAID".formatted(t.getId()));
             }
@@ -256,7 +288,6 @@ public class OrderService {
         orderRepository.save(order);
     }
 
-    // Внутри OrderService
     @Transactional
     public OrderRs exchangeTickets(Long oldOrderId, ExchangeRq rq, Long userId) {
         // 1. Валидация старого заказа
@@ -272,12 +303,15 @@ public class OrderService {
             throw new ValidationException("Some old tickets not found");
         }
 
-        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        LocalDateTime now = LocalDateTime.now(appProperties.getTimezone());
         BigDecimal oldRefund = BigDecimal.ZERO;
 
         for (TicketEntity t : oldTickets) {
             if (!t.getOrder().getId().equals(oldOrderId)) {
                 throw new ValidationException("Ticket %d belongs to another order".formatted(t.getId()));
+            }
+            if (t.getStatus() == TicketStatus.EXCHANGING) {
+                throw new ValidationException("Ticket %d is currently part of a pending exchange".formatted(t.getId()));
             }
             if (t.getStatus() != TicketStatus.PAID) {
                 throw new ValidationException("Ticket %d is not PAID".formatted(t.getId()));
@@ -311,7 +345,7 @@ public class OrderService {
         for (SeatCoordRq coord : rq.newSeats()) {
             boolean isTaken = ticketRepository.existsBySessionIdAndRowNumAndColNumAndStatusIn(
                     newSession.getId(), coord.row(), coord.col(),
-                    List.of(TicketStatus.RESERVED, TicketStatus.PAID));
+                    List.of(TicketStatus.RESERVED, TicketStatus.PAID, TicketStatus.EXCHANGING));
             if (isTaken) {
                 throw new ValidationException("New seat [%d,%d] is already taken".formatted(coord.row(), coord.col()));
             }
@@ -333,14 +367,13 @@ public class OrderService {
             newTickets.add(nt);
         }
 
-        // 6. Атомарное обновление: старые билеты → CANCELLED
-        oldTickets.forEach(t -> t.setStatus(TicketStatus.CANCELLED));
+        oldTickets.forEach(t -> t.setStatus(TicketStatus.EXCHANGING));
         ticketRepository.saveAll(oldTickets);
 
         // 7. Обновление старого заказа
         oldOrder.setTotalAmount(oldOrder.getTotalAmount().subtract(oldRefund));
         // oldOrder.setTotal(oldOrder.getTotal().subtract(oldRefund));
-        boolean hasPaidLeft = ticketRepository.findByOrderIdAndStatus(oldOrderId, TicketStatus.PAID).isEmpty();
+        boolean hasPaidLeft = !ticketRepository.findByOrderIdAndStatus(oldOrderId, TicketStatus.PAID).isEmpty();
         if (!hasPaidLeft) {
             oldOrder.setStatus(OrderStatus.CANCELLED);
         }
@@ -364,5 +397,12 @@ public class OrderService {
 
         // 10. Возврат DTO нового заказа (клиент увидит amountToPay = 160)
         return OrderRs.from(newOrder);
+    }
+
+    public List<OrderRs> getOrdersForUser(Long userId) {
+        List<OrderEntity> orders = orderRepository.findByUserIdWithTickets(userId);
+        return orders.stream()
+                .map(OrderRs::from)
+                .toList();
     }
 }

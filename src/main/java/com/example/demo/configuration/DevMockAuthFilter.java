@@ -25,7 +25,7 @@ public class DevMockAuthFilter extends OncePerRequestFilter {
         // Если аутентификация ещё не установлена → подставляем тестового пользователя
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             var auth = new UsernamePasswordAuthenticationToken(
-                    1L, // 🔹 principal = ID тестового пользователя
+                    20L, // 🔹 principal = ID тестового пользователя
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_USER")));
             SecurityContextHolder.getContext().setAuthentication(auth);

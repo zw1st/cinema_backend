@@ -1,4 +1,8 @@
 spring:
+    # sql:
+    #     init:
+    #         mode: always
+    #         data-locations: file:backup.sql
     application:
         name: cinema_backend
     main:
