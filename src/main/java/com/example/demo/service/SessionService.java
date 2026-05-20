@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,10 +20,13 @@ import com.example.demo.entity.HallEntity;
 import com.example.demo.entity.MovieEntity;
 import com.example.demo.entity.SeatEntity;
 import com.example.demo.entity.SessionEntity;
+import com.example.demo.entity.TicketEntity;
+import com.example.demo.entity.enumeration.TicketStatus;
 import com.example.demo.exception.NotFoundException;
 import com.example.demo.exception.ValidationException;
 import com.example.demo.repository.SeatRepository;
 import com.example.demo.repository.SessionRepository;
+import com.example.demo.repository.TicketRepository;
 
 @Service
 public class SessionService {
@@ -30,16 +34,19 @@ public class SessionService {
     private final MovieService movieService;
     private final HallService hallService;
     private final SeatRepository seatRepository;
+    private final TicketRepository ticketRepository;
     private final AppProperties appProperties;
 
     public SessionService(
             SessionRepository repository,
             MovieService movieService,
-            HallService hallService, AppProperties appProperties, SeatRepository seatRepository) {
+            HallService hallService, AppProperties appProperties, SeatRepository seatRepository,
+            TicketRepository ticketRepository) {
         this.repository = repository;
         this.movieService = movieService;
         this.hallService = hallService;
         this.seatRepository = seatRepository;
+        this.ticketRepository = ticketRepository;
         this.appProperties = appProperties;
     }
 
@@ -126,33 +133,34 @@ public class SessionService {
 
         List<SeatEntity> allSeats = seatRepository.findByHallId(session.getHall().getId());
 
-        // 🔹 Загружаем статусы (сейчас — мок, позже — из БД)
-        Map<String, String> seatStatuses = loadSeatStatusesForSession(sessionId);
+        String[][] matrixScheme = new String[session.getHall().getTotalRows()][session.getHall().getTotalCols()];
+        for (SeatEntity seat : allSeats) {
+            // Вычитаем 1, так как в БД нумерация с 1, а в массиве с 0
+            int rowIndex = seat.getRowNum() - 1;
+            int colIndex = seat.getColNum() - 1;
+
+            matrixScheme[rowIndex][colIndex] = seat.getSeatType().getName();
+        }
+
+        Map<String, TicketStatus> bookedSeats = loadSeatStatusesForSession(sessionId);
 
         List<SeatStatusDto> seatDtos = allSeats.stream().map(seat -> {
             String key = seat.getRowNum() + ":" + seat.getColNum();
-            String status = seatStatuses.get(key); // null → available
-            return SeatStatusDto.forSession(seat, status, session.getBasePrice());
+            TicketStatus ticketStatus = bookedSeats.get(key); // null → место свободно
+
+            // Передаём статус билета в forSession — он сам решит, доступно ли место
+            return SeatStatusDto.forSession(seat, ticketStatus, session.getBasePrice());
         }).toList();
 
-        return LayoutRs.from(session.getHall(), seatDtos);
+        return LayoutRs.from(session.getHall(), seatDtos, matrixScheme);
     }
 
-    /**
-     * Загружает статусы мест для сеанса.
-     * Пока логика билетов не реализована — возвращает пустую карту (все места
-     * свободны).
-     * TODO: раскомментировать загрузку из ticketRepository при реализации билетов
-     */
-    private Map<String, String> loadSeatStatusesForSession(Long sessionId) {
-        // 🔹 MOCK: все места свободны
-        return Map.of(); // Пустая карта → get(key) вернёт null → "available"
-
-        // 🔹 REAL (в будущем):
-        // return ticketRepository.findBySessionId(sessionId).stream()
-        // .collect(Collectors.toMap(
-        // t -> t.getRow() + ":" + t.getColumn(),
-        // TicketEntity::getStatus
-        // ));
+    private Map<String, TicketStatus> loadSeatStatusesForSession(Long sessionId) {
+        return ticketRepository.findBySessionId(sessionId).stream()
+                .collect(Collectors.toMap(
+                        t -> t.getRowNum() + ":" + t.getColNum(), // Ключ
+                        TicketEntity::getStatus, // Значение
+                        (existing, replacement) -> existing // Merge function на случай дублей
+                ));
     }
 }

@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.repository.GiftCardRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,17 +12,22 @@ import com.example.demo.repository.TicketRepository;
 @Profile("dev") // 🔹 Сервис существует только в dev-режиме
 public class TestDataCleanupService {
 
+    private final GiftCardRepository giftCardRepository;
     private final TicketRepository ticketRepository;
     private final OrderRepository orderRepository;
 
-    public TestDataCleanupService(TicketRepository ticketRepository, OrderRepository orderRepository) {
+    public TestDataCleanupService(TicketRepository ticketRepository, OrderRepository orderRepository,
+            GiftCardRepository giftCardRepository) {
         this.ticketRepository = ticketRepository;
         this.orderRepository = orderRepository;
+        this.giftCardRepository = giftCardRepository;
     }
 
     @Transactional
     public void cleanupPurchaseData() {
+        giftCardRepository.deleteAll();
         ticketRepository.deleteAll();
         orderRepository.deleteAll();
+
     }
 }

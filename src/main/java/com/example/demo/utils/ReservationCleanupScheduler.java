@@ -36,22 +36,31 @@ public class ReservationCleanupScheduler {
     public void cleanupExpiredReservations() {
         Instant threshold = Instant.now().minus(Duration.ofMinutes(appProperties.getReservationTimer()));
 
-        // 1. Находим зависшие заказы
+        // 1. Находим зависшие PENDING-заказы
         List<OrderEntity> expiredOrders = orderRepository
                 .findExpiredPendingOrders(OrderStatus.PENDING, threshold);
         if (expiredOrders.isEmpty())
             return;
 
-        // 2. Находим связанные билеты
         List<Long> orderIds = expiredOrders.stream().map(OrderEntity::getId).toList();
         List<TicketEntity> expiredTickets = ticketRepository
-                .findByOrderIdsAndStatus(orderIds, TicketStatus.RESERVED);
+                .findByOrderIdsAndStatusIn(orderIds, List.of(TicketStatus.RESERVED, TicketStatus.EXCHANGING));
 
-        // 3. Меняем статусы (JPA dirty checking сохранит изменения при commit)
+        // 3. Раздельная обработка по статусу
+        for (TicketEntity t : expiredTickets) {
+            if (t.getStatus() == TicketStatus.RESERVED) {
+                // Обычная бронь → отменяем
+                t.setStatus(TicketStatus.CANCELLED);
+            } else if (t.getStatus() == TicketStatus.EXCHANGING) {
+                // Билет из обмена → восстанавливаем в PAID (откат обмена)
+                t.setStatus(TicketStatus.PAID);
+            }
+        }
+
+        // 4. Отменяем заказы
         expiredOrders.forEach(o -> o.setStatus(OrderStatus.CANCELLED));
-        expiredTickets.forEach(t -> t.setStatus(TicketStatus.CANCELLED));
 
-        // 4. Фиксируем в БД
+        // 5. Фиксируем изменения
         orderRepository.saveAll(expiredOrders);
         ticketRepository.saveAll(expiredTickets);
     }

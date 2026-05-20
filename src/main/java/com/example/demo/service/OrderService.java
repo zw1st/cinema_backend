@@ -13,6 +13,8 @@ import com.example.demo.entity.SeatEntity;
 import com.example.demo.entity.SessionEntity;
 import com.example.demo.entity.TicketEntity;
 import com.example.demo.entity.UserEntity;
+import com.example.demo.entity.UserGiftCardEntity;
+import com.example.demo.entity.enumeration.GiftCardStatus;
 import com.example.demo.entity.enumeration.OrderStatus;
 import com.example.demo.entity.enumeration.TicketStatus;
 import com.example.demo.exception.NotFoundException;
@@ -37,16 +39,22 @@ public class OrderService {
     private final SessionRepository sessionRepository;
     private final SeatRepository seatRepository;
     private final UserRepository userRepository;
+    private final SpecialStatusRequestService specialStatusRequestService;
+    private final UserGiftCardService userGiftCardService;
     private final AppProperties appProperties;
 
     public OrderService(OrderRepository orderRepository, TicketRepository ticketRepository,
             SessionRepository sessionRepository, SeatRepository seatRepository,
-            UserRepository userRepository, AppProperties appProperties) {
+            UserRepository userRepository, AppProperties appProperties,
+            SpecialStatusRequestService specialStatusRequestService,
+            UserGiftCardService userGiftCardService) {
         this.orderRepository = orderRepository;
         this.ticketRepository = ticketRepository;
         this.sessionRepository = sessionRepository;
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
+        this.specialStatusRequestService = specialStatusRequestService;
+        this.userGiftCardService = userGiftCardService;
         this.appProperties = appProperties;
     }
 
@@ -103,22 +111,52 @@ public class OrderService {
             tickets.add(ticket);
         }
 
-        // 4. Создание заказа
+        // Расчёт скидки по статусу
+        BigDecimal statusCoef = specialStatusRequestService.getMaxDiscountCoef(userId); // 0.95 или 1.0
+        BigDecimal priceAfterStatus = totalAmount.multiply(statusCoef);
+
+        // Обработка подарочной карты
+        BigDecimal giftDiscount = BigDecimal.ZERO;
+        Long appliedCardId = null;
+
+        if (rq.appliedGiftCardId() != null) {
+            // Валидация карты: владелец, статус, срок
+            UserGiftCardEntity card = userGiftCardService.validateCard(rq.appliedGiftCardId(), userId);
+
+            // Проверка: не используется ли карта уже в другом PENDING-заказе
+            boolean isCardReserved = orderRepository.existsByAppliedGiftCardId(rq.appliedGiftCardId());
+            if (isCardReserved) {
+                throw new ValidationException("Gift card is already reserved in another pending order");
+            }
+
+            giftDiscount = card.getGiftCard().getNominal();
+            appliedCardId = card.getId();
+        }
+
+        BigDecimal finalPrice = priceAfterStatus.subtract(giftDiscount);
+        if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
+            finalPrice = BigDecimal.ZERO; // Излишек карты сгорает по ТЗ
+        }
+
         OrderEntity order = new OrderEntity();
+        // Привязка билетов
+        for (TicketEntity t : tickets)
+            t.setOrder(order);
+
+        // Создание заказа
         order.setUser(user);
         order.setCustomerEmail(user.getEmail());
         order.setTotalAmount(totalAmount);
-        // order.setTotal(totalAmount); //TODO добавить когда будут скидки
+        order.setFinalPrice(finalPrice); // Итоговая сумма с учётом скидки по статусу и подарочной карты
+        order.setAppliedGiftCardId(appliedCardId);
         order.setStatus(OrderStatus.PENDING);
+        order.setStatusDiscountCoef(statusCoef);
         order.setCreatedAt(Instant.now());
-        orderRepository.save(order);
 
-        // 5. Привязка билетов
-        for (TicketEntity t : tickets)
-            t.setOrder(order);
+        orderRepository.save(order);
         ticketRepository.saveAll(tickets);
 
-        return OrderRs.from(order);
+        return OrderRs.from(order, tickets);
     }
 
     @Transactional
@@ -143,6 +181,11 @@ public class OrderService {
         }
         ticketRepository.saveAll(tickets);
 
+        // Активация подарочной карты (если применялась)
+        if (order.getAppliedGiftCardId() != null) {
+            userGiftCardService.activateCard(order.getAppliedGiftCardId(), orderId);
+        }
+
         if (order.getExchangeFromOrderId() != null) {
             Long oldOrderId = order.getExchangeFromOrderId();
             List<TicketEntity> exchangingTickets = ticketRepository.findByOrderIdAndStatus(oldOrderId,
@@ -152,12 +195,11 @@ public class OrderService {
             exchangingTickets.forEach(t -> t.setStatus(TicketStatus.CANCELLED));
             ticketRepository.saveAll(exchangingTickets);
 
-            // Пересчитываем старый заказ
             OrderEntity oldOrder = orderRepository.findById(oldOrderId)
                     .orElseThrow(() -> new NotFoundException("Original order not found"));
             BigDecimal refundAmount = order.getAdjustmentAmount().abs();
             oldOrder.setTotalAmount(oldOrder.getTotalAmount().subtract(refundAmount));
-            // oldOrder.setTotalAmount(oldOrder.getTotalAmount().subtract(refundAmount));
+            oldOrder.setFinalPrice(oldOrder.getFinalPrice().subtract(refundAmount));
 
             boolean hasPaidLeft = !ticketRepository.findByOrderIdAndStatus(oldOrderId, TicketStatus.PAID).isEmpty();
             if (!hasPaidLeft)
@@ -166,7 +208,7 @@ public class OrderService {
             orderRepository.save(oldOrder);
         }
 
-        return OrderRs.from(order);
+        return OrderRs.from(order, tickets);
     }
 
     @Transactional
@@ -215,7 +257,13 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         order.setTotalAmount(order.getTotalAmount().subtract(deducted));
-        // order.setTotal(order.getTot().subtract(deducted)); // Пока скидок нет
+        order.setFinalPrice(order.getFinalPrice().subtract(deducted));
+
+        if (order.getAppliedGiftCardId() != null) {
+            order.setAppliedGiftCardId(null);
+            // Карта остаётся в статусе purchased, так как активация происходит только в
+            // confirmPayment
+        }
 
         // 5. Обновление статуса заказа, если броней не осталось
         boolean hasActiveReservations = !ticketRepository.findByOrderIdAndStatus(orderId, TicketStatus.RESERVED)
@@ -274,11 +322,24 @@ public class OrderService {
 
         // 4. Пересчёт суммы заказа
         BigDecimal refunded = ticketsToRefund.stream()
-                .map(TicketEntity::getFinalPrice)
+                .map(t -> t.getFinalPrice().multiply(order.getStatusDiscountCoef()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         order.setTotalAmount(order.getTotalAmount().subtract(refunded));
-        // order.setTotal(order.getTotal().subtract(refunded));
+        order.setFinalPrice(order.getFinalPrice().subtract(refunded));
+
+        // Обработка подарочной карты при возврате
+        if (order.getAppliedGiftCardId() != null) {
+            boolean hasPaidTicketsLeft = !ticketRepository.findByOrderIdAndStatus(orderId, TicketStatus.PAID).isEmpty();
+
+            if (!hasPaidTicketsLeft) {
+                // Все билеты возвращены → возвращаем карту через сервис
+                userGiftCardService.reactivateCard(order.getAppliedGiftCardId());
+                order.setAppliedGiftCardId(null);
+            }
+            // Если остались оплаченные билеты → карта остаётся activated (частичный
+            // возврат)
+        }
 
         // 5. Обновление статуса заказа, если оплаченных билетов не осталось
         boolean hasPaidTickets = !ticketRepository.findByOrderIdAndStatus(orderId, TicketStatus.PAID).isEmpty();
@@ -367,12 +428,38 @@ public class OrderService {
             newTickets.add(nt);
         }
 
+        BigDecimal statusCoef = specialStatusRequestService.getMaxDiscountCoef(userId);
+        BigDecimal priceAfterStatus = newTotal.multiply(statusCoef);
+
+        BigDecimal giftDiscount = BigDecimal.ZERO;
+        Long newAppliedCardId = null;
+
+        if (rq.appliedGiftCardId() != null) {
+            // Валидация через сервис
+            UserGiftCardEntity card = userGiftCardService.validateCard(rq.appliedGiftCardId(), userId);
+
+            // Проверка: не используется ли карта уже в другом PENDING-заказе
+            boolean isCardReserved = orderRepository.existsByAppliedGiftCardId(rq.appliedGiftCardId());
+            if (isCardReserved) {
+                throw new ValidationException("Gift card is already reserved in another pending order");
+            }
+
+            giftDiscount = card.getGiftCard().getNominal();
+            newAppliedCardId = card.getId();
+        }
+
+        BigDecimal finalPrice = priceAfterStatus.subtract(giftDiscount);
+        if (finalPrice.compareTo(BigDecimal.ZERO) < 0) {
+            finalPrice = BigDecimal.ZERO; // Излишек карты сгорает по ТЗ
+        }
+
         oldTickets.forEach(t -> t.setStatus(TicketStatus.EXCHANGING));
         ticketRepository.saveAll(oldTickets);
 
         // 7. Обновление старого заказа
         oldOrder.setTotalAmount(oldOrder.getTotalAmount().subtract(oldRefund));
-        // oldOrder.setTotal(oldOrder.getTotal().subtract(oldRefund));
+        oldOrder.setFinalPrice(oldOrder.getFinalPrice().subtract(oldRefund));
+
         boolean hasPaidLeft = !ticketRepository.findByOrderIdAndStatus(oldOrderId, TicketStatus.PAID).isEmpty();
         if (!hasPaidLeft) {
             oldOrder.setStatus(OrderStatus.CANCELLED);
@@ -383,10 +470,12 @@ public class OrderService {
         OrderEntity newOrder = new OrderEntity();
         newOrder.setUser(oldOrder.getUser());
         newOrder.setCustomerEmail(oldOrder.getCustomerEmail());
-        newOrder.setTotalAmount(newTotal);
-        // newOrder.setTotal(newTotal);
-        newOrder.setAdjustmentAmount(oldRefund.negate()); // -800 для возврата
-        newOrder.setExchangeFromOrderId(oldOrderId);
+        newOrder.setTotalAmount(newTotal); // Base price новых билетов
+        newOrder.setFinalPrice(finalPrice); // Итог к оплате
+        newOrder.setStatusDiscountCoef(statusCoef); // Скидка статуса
+        newOrder.setAppliedGiftCardId(newAppliedCardId); // Новая карта (или null)
+        newOrder.setAdjustmentAmount(oldRefund.negate()); // Кредит за возврат (-800)
+        newOrder.setExchangeFromOrderId(oldOrderId); // Связь со старым заказом
         newOrder.setStatus(OrderStatus.PENDING);
         newOrder.setCreatedAt(Instant.now());
         orderRepository.save(newOrder);
@@ -396,13 +485,13 @@ public class OrderService {
         ticketRepository.saveAll(newTickets);
 
         // 10. Возврат DTO нового заказа (клиент увидит amountToPay = 160)
-        return OrderRs.from(newOrder);
+        return OrderRs.from(newOrder, newTickets);
     }
 
     public List<OrderRs> getOrdersForUser(Long userId) {
         List<OrderEntity> orders = orderRepository.findByUserIdWithTickets(userId);
         return orders.stream()
-                .map(OrderRs::from)
+                .map(order -> OrderRs.from(order, order.getTickets()))
                 .toList();
     }
 }

@@ -23,6 +23,9 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount; // Сумма до скидок
 
+    @Column(name = "final_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal finalPrice; // Сумма после всех скидок (к оплате)
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -46,19 +49,45 @@ public class OrderEntity extends BaseEntity {
     @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
     private List<TicketEntity> tickets; // никаких сеттеров!
 
-    public List<TicketEntity> getTickets() {
-        return tickets;
-    }
+    @Column(name = "status_discount_coef", precision = 3, scale = 2)
+    private BigDecimal statusDiscountCoef = BigDecimal.ONE;
 
-    public OrderEntity(BigDecimal totalAmount, Instant createdAt, UserEntity user, String customerEmail,
-            Long exchangeFromOrderId, BigDecimal adjustmentAmount, OrderStatus status) {
+    @Column(name = "applied_gift_card_id")
+    private Long appliedGiftCardId;
+
+    public OrderEntity(BigDecimal totalAmount, BigDecimal finalPrice, Instant createdAt, UserEntity user,
+            String customerEmail, Long exchangeFromOrderId, BigDecimal adjustmentAmount, OrderStatus status,
+            BigDecimal statusDiscountCoef, Long appliedGiftCardId) {
         this.totalAmount = totalAmount;
+        this.finalPrice = finalPrice;
         this.createdAt = createdAt;
         this.user = user;
         this.customerEmail = customerEmail;
         this.exchangeFromOrderId = exchangeFromOrderId;
         this.adjustmentAmount = adjustmentAmount;
         this.status = status;
+        this.statusDiscountCoef = statusDiscountCoef;
+        this.appliedGiftCardId = appliedGiftCardId;
+    }
+
+    public BigDecimal getStatusDiscountCoef() {
+        return statusDiscountCoef;
+    }
+
+    public void setStatusDiscountCoef(BigDecimal statusDiscountCoef) {
+        this.statusDiscountCoef = statusDiscountCoef;
+    }
+
+    public Long getAppliedGiftCardId() {
+        return appliedGiftCardId;
+    }
+
+    public void setAppliedGiftCardId(Long appliedGiftCardId) {
+        this.appliedGiftCardId = appliedGiftCardId;
+    }
+
+    public List<TicketEntity> getTickets() {
+        return tickets;
     }
 
     public OrderEntity() {
@@ -121,9 +150,11 @@ public class OrderEntity extends BaseEntity {
         this.exchangeFromOrderId = exchangeFromOrderId;
     }
 
-    // @Column(name = "discount_coef", precision = 5, scale = 2)
-    // private BigDecimal discountCoef; // 1.0 = без скидки, 0.9 = -10%
+    public BigDecimal getFinalPrice() {
+        return finalPrice;
+    }
 
-    // @Column(nullable = false, precision = 10, scale = 2)
-    // private BigDecimal total; // Итоговая сумма к оплате (после скидки)
+    public void setFinalPrice(BigDecimal finalPrice) {
+        this.finalPrice = finalPrice;
+    }
 }

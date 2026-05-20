@@ -15,6 +15,7 @@ import com.example.demo.repository.SpecialStatusRepository;
 import com.example.demo.repository.SpecialStatusUserRepository;
 import com.example.demo.repository.UserRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -100,5 +101,11 @@ public class SpecialStatusRequestService {
                 .filter(req -> req.getStatus() == UserStatusRequestCondition.active)
                 // Ищем запись с наибольшим коэффициентом скидки
                 .min(Comparator.comparing(req -> req.getSpecialStatus().getDiscountSize()));
+    }
+
+    public BigDecimal getMaxDiscountCoef(Long userId) {
+        return getMaxDiscountActiveStatus(userId)
+                .map(req -> req.getSpecialStatus().getDiscountSize())
+                .orElse(BigDecimal.ONE); // 1.0 = без скидки
     }
 }

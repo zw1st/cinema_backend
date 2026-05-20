@@ -48,12 +48,12 @@ public class SessionController {
 
     @GetMapping("/movie/{movie_id}")
     public List<SessionRs> getByMovieAndDate(
-            @RequestParam("movie_id") Long movieId) {
+            @PathVariable("movie_id") Long movieId) {
         return service.getByMovieId(movieId);
     }
 
-    @GetMapping("/layout")
-    public LayoutRs getLayout(@RequestParam Long session_id) {
+    @GetMapping("/layout/{session_id}")
+    public LayoutRs getLayout(@PathVariable Long session_id) {
         return service.getLayout(session_id);
     }
 }

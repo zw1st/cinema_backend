@@ -41,4 +41,6 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
             "WHERE o.user.id = :userId " +
             "ORDER BY o.createdAt DESC")
     List<OrderEntity> findByUserIdWithTickets(@Param("userId") Long userId);
+
+    boolean existsByAppliedGiftCardId(Long cardId);
 }

@@ -85,29 +85,32 @@ public class SeatService {
             }
         }
 
-        // TODO расскомменить когда допишу ticket
-        // boolean hasActiveBookings =
-        // sessionRepository.findByHallId(hall.getId()).stream()
-        // .anyMatch(session -> ticketRepository.existsBySessionId(session.getId()));
-        // if (hasActiveBookings) {
-        // throw new ValidationException("Cannot update layout: Hall has active sessions
-        // with tickets.");
-        // }
-
         // 3. Удаляем старую схему
         repository.deleteByHallId(hall.getId());
 
         List<SeatEntity> seatsToSave = new ArrayList<>();
+        String[][] matrixScheme = new String[hall.getTotalRows()][hall.getTotalCols()];
         int rowIdx = 1;
 
         for (List<Integer> row : matrix) {
             int colIdx = 1;
+            List<Long> schemeRow = new ArrayList<>();
             for (Integer typeId : row) {
-                if (typeId != null && typeId > 0) { // >0 = место, 0/null = неявный проход
+                if (typeId != null && typeId.longValue() > 0L) { // >0 = место, 0/null = неявный проход
                     SeatType type = seatTypeService.getEntity(typeId.longValue());
                     seatsToSave.add(new SeatEntity(rowIdx, colIdx, type, hall));
+                    schemeRow.add(type.getId());
+                } else {
+                    schemeRow.add(0L); // 0 для проходов
                 }
                 colIdx++;
+            }
+            for (int i = 0; i < schemeRow.size(); i++) {
+                if (schemeRow.get(i) != 0L) {
+                    matrixScheme[rowIdx - 1][i] = seatTypeService.getEntity(schemeRow.get(i)).getName();
+                } else {
+                    matrixScheme[rowIdx - 1][i] = null; // Явный маркер для проходов
+                }
             }
             rowIdx++;
         }
@@ -118,6 +121,6 @@ public class SeatService {
                 .map(SeatStatusDto::forLayout)
                 .toList();
 
-        return LayoutRs.from(hall, seatDtos);
+        return LayoutRs.from(hall, seatDtos, matrixScheme);
     }
 }
