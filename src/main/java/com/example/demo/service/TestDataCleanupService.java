@@ -9,10 +9,9 @@ import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.TicketRepository;
 
 @Service
-@Profile("dev") // 🔹 Сервис существует только в dev-режиме
+// @Profile("dev") // 🔹 Сервис существует только в dev-режиме
 public class TestDataCleanupService {
 
-    private final GiftCardRepository giftCardRepository;
     private final TicketRepository ticketRepository;
     private final OrderRepository orderRepository;
 
@@ -20,12 +19,11 @@ public class TestDataCleanupService {
             GiftCardRepository giftCardRepository) {
         this.ticketRepository = ticketRepository;
         this.orderRepository = orderRepository;
-        this.giftCardRepository = giftCardRepository;
     }
 
     @Transactional
     public void cleanupPurchaseData() {
-        giftCardRepository.deleteAll();
+        // giftCardRepository.deleteAll();
         ticketRepository.deleteAll();
         orderRepository.deleteAll();
 

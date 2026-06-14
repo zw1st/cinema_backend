@@ -35,7 +35,10 @@ ext {
     springdocVersion = "2.8.11"
     h2Version = "2.4.240"
     //liquibaseVersion = "4.33.0"
+        postgresVersion = "42.7.8"
+
     mockitoVersion = "5.19.0"
+
 }
 
 configurations {
@@ -47,6 +50,7 @@ dependencies {
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
 
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "org.postgresql:postgresql:${postgresVersion}"
     runtimeOnly "com.h2database:h2:${h2Version}"
     //runtimeOnly "org.liquibase:liquibase-core:${liquibaseVersion}"
 
@@ -62,6 +66,16 @@ dependencies {
     mockitoAgent("org.mockito:mockito-core:${mockitoVersion}") {
         transitive = false
     }
+
+    implementation 'com.github.librepdf:openpdf:1.3.39'
+
+    implementation 'com.google.zxing:core:3.5.3'
+    implementation 'com.google.zxing:javase:3.5.3'
+
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 }
 
 tasks.named("test") {

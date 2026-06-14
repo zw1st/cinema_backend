@@ -2,17 +2,22 @@ package com.example.demo.api.order;
 
 import java.util.List;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.service.OrderService;
+import com.example.demo.service.TicketPdfService;
+import com.google.common.net.HttpHeaders;
 
 import jakarta.validation.Valid;
 
@@ -20,9 +25,11 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/1.0/orders")
 public class OrderController {
     private final OrderService orderService;
+    private final TicketPdfService ticketPdfService;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, TicketPdfService ticketPdfService) {
         this.orderService = orderService;
+        this.ticketPdfService = ticketPdfService;
     }
 
     @PostMapping
@@ -79,7 +86,34 @@ public class OrderController {
     }
 
     @GetMapping("/me/orders")
-    public List<OrderRs> getMyOrders(@AuthenticationPrincipal Long userId) {
-        return orderService.getOrdersForUser(userId);
+    public List<OrderRs> getMyOrders(@AuthenticationPrincipal Long userId,
+            @RequestParam(defaultValue = "false") boolean withoutCancelled) {
+        return orderService.getOrdersForUser(userId, withoutCancelled);
+    }
+
+    @PutMapping("/{orderId}/{ticketId}/mark-scanned")
+    public ResponseEntity<Void> markTicketAsScanned(
+            @PathVariable Long orderId,
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal Long userId) {
+        orderService.markTicketAsScanned(orderId, ticketId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/tickets/{ticketId}/pdf")
+    public ResponseEntity<byte[]> downloadTicketPdf(
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal Long userId) {
+
+        byte[] pdf = ticketPdfService.generateTicketPdf(
+                ticketId,
+                userId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=ticket-" + ticketId + ".pdf")
+                .body(pdf);
     }
 }

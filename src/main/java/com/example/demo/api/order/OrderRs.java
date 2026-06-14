@@ -14,10 +14,11 @@ public record OrderRs(
         @JsonProperty("total_amount") BigDecimal totalAmount,
         @JsonProperty("status_discount_coef") BigDecimal statusDiscountCoef,
         @JsonProperty("applied_gift_card_id") Long appliedGiftCardId,
+        @JsonProperty("discount_type") String discountType,
         @JsonProperty("final_price") BigDecimal finalPrice,
         @JsonProperty("created_at") Instant createdAt,
         @JsonProperty("exchange_from_order_id") Long exchangeFromOrderId,
-        @JsonProperty("adjustment_amount") BigDecimal adjustmentAmount, List<TicketRs> tickets) {
+        List<TicketRs> tickets) {
 
     public static OrderRs from(OrderEntity order, List<TicketEntity> tickets) {
         List<TicketRs> ticketDtos = tickets != null
@@ -30,10 +31,10 @@ public record OrderRs(
                 order.getTotalAmount(),
                 order.getStatusDiscountCoef(),
                 order.getAppliedGiftCardId(),
+                order.getDiscountType().name(),
                 order.getFinalPrice(),
                 order.getCreatedAt(),
                 order.getExchangeFromOrderId(),
-                order.getAdjustmentAmount(),
                 ticketDtos);
     }
 }

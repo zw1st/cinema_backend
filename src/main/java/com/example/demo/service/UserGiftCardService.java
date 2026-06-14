@@ -42,6 +42,7 @@ public class UserGiftCardService {
     public UserGiftCardRs purchase(Long buyerId, UserGiftCardRq rq) {
         UserEntity buyer = userRepository.findById(buyerId)
                 .orElseThrow(() -> new NotFoundException("Buyer not found"));
+        UserEntity owner = userRepository.findByEmail(rq.recipientEmail().toLowerCase().trim()).orElse(null);
         GiftCardEntity template = giftCardRepository.findByIdAndIsActiveTrue(rq.giftcardId())
                 .orElseThrow(() -> new NotFoundException("Gift card type not available"));
 
@@ -52,13 +53,18 @@ public class UserGiftCardService {
         card.setPurchasedAt(LocalDateTime.now());
         card.setExpireDate(LocalDate.now().plusMonths(12));
         card.setStatus(GiftCardStatus.purchased);
-        // owner = null (ожидает активации)
-
+        card.setOwner(owner); // Если email уже зарегистрирован, привязываем карту сразу
+        card.setSenderEmail(rq.senderEmail().trim());
         return UserGiftCardRs.from(userGiftCardRepository.save(card));
     }
 
     // 🔹 Просмотр карт текущим владельцем
-    public List<UserGiftCardRs> getCardsByOwner(Long ownerId) {
+    public List<UserGiftCardRs> getCardsByOwner(Long ownerId, Boolean purchasedOnly) {
+        if (purchasedOnly != null && purchasedOnly) {
+            return userGiftCardRepository.findByOwnerIdAndStatus(ownerId, GiftCardStatus.purchased).stream()
+                    .map(UserGiftCardRs::from)
+                    .toList();
+        }
         return userGiftCardRepository.findByOwnerId(ownerId).stream()
                 .map(UserGiftCardRs::from)
                 .toList();

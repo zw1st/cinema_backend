@@ -21,7 +21,7 @@ public class AppProperties {
     private LocalTime closeTime;
 
     @Min(0)
-    private int cleanupBufferMinutes = 30; // значение по умолчанию
+    private int cleanupBufferMinutes = 1; // значение по умолчанию
 
     @Min(1)
     private int ticketPerOrder = 5;

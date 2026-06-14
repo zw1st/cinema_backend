@@ -7,6 +7,7 @@ import java.util.List;
 public record ExchangeRq(
         @JsonProperty("old_ticket_ids") @NotNull List<Long> oldTicketIds,
         @JsonProperty("applied_gift_card_id") Long appliedGiftCardId,
+        @JsonProperty("apply_status_discount") Boolean applyStatusDiscount,
         @JsonProperty("new_session_id") @NotNull Long newSessionId,
-        @NotNull List<SeatCoordRq> newSeats) {
+        @JsonProperty("new_seats") @NotNull List<SeatCoordRq> newSeats) {
 }

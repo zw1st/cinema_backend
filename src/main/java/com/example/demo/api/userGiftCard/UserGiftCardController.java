@@ -26,8 +26,9 @@ public class UserGiftCardController {
     }
 
     @GetMapping
-    public List<UserGiftCardRs> getMyCards(@AuthenticationPrincipal Long userId) {
-        return userGiftCardService.getCardsByOwner(userId);
+    public List<UserGiftCardRs> getMyCards(@AuthenticationPrincipal Long userId,
+            @RequestParam(defaultValue = "false") Boolean purchasedOnly) {
+        return userGiftCardService.getCardsByOwner(userId, purchasedOnly);
     }
 
     // 🔹 Явная активация карт, привязанных к email (можно вызывать после логина)

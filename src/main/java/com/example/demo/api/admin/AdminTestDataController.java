@@ -8,7 +8,7 @@ import com.example.demo.service.TestDataCleanupService;
 
 @RestController
 @RequestMapping("/api/1.0/admin")
-@Profile("dev") // 🔹 Контроллер не виден в prod
+// @Profile("dev") // 🔹 Контроллер не виден в prod
 public class AdminTestDataController {
 
     private final TestDataCleanupService cleanupService;

@@ -33,6 +33,7 @@ public class AuthController {
         String token = idToken.startsWith("Bearer ") ? idToken.substring(7) : idToken;
 
         UserRs response = authService.authenticateSignIn(token, rq);
+
         return response;
     }
 

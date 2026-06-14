@@ -35,12 +35,17 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
             @Param("status") OrderStatus status,
             @Param("threshold") Instant threshold);
 
-    @Query("SELECT DISTINCT o FROM OrderEntity o " +
-            "LEFT JOIN FETCH o.tickets t " +
-            "LEFT JOIN FETCH t.session " +
-            "WHERE o.user.id = :userId " +
-            "ORDER BY o.createdAt DESC")
+    @Query("""
+            SELECT DISTINCT o
+            FROM OrderEntity o
+            LEFT JOIN FETCH o.tickets t
+            LEFT JOIN FETCH t.session s
+            LEFT JOIN FETCH s.movie
+            WHERE o.user.id = :userId
+            """)
     List<OrderEntity> findByUserIdWithTickets(@Param("userId") Long userId);
 
     boolean existsByAppliedGiftCardId(Long cardId);
+
+    boolean existsByAppliedGiftCardIdAndStatus(Long cardId, OrderStatus status);
 }

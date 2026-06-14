@@ -17,10 +17,12 @@ import com.google.firebase.auth.FirebaseToken;
 public class AuthService {
     private final FirebaseAuth firebaseAuth;
     private final UserService userService;
+    private final UserGiftCardService userGiftCardService;
 
-    public AuthService(FirebaseAuth firebaseAuth, UserService userService) {
+    public AuthService(FirebaseAuth firebaseAuth, UserService userService, UserGiftCardService userGiftCardService) {
         this.firebaseAuth = firebaseAuth;
         this.userService = userService;
+        this.userGiftCardService = userGiftCardService;
     }
 
     /**
@@ -38,7 +40,9 @@ public class AuthService {
     @Transactional
     public UserRs authenticateSignIn(String idToken, SignInRq rq) {
         validateToken(idToken, rq.firebaseUid());
-        return userService.syncUser(rq);
+        UserRs createdUser = userService.syncUser(rq);
+        userGiftCardService.activateForUser(userService.getEntityByFirebaseUid(rq.firebaseUid()).getId());
+        return createdUser;
     }
 
     @Transactional

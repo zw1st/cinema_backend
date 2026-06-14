@@ -95,6 +95,13 @@ public class SpecialStatusRequestService {
         return StatusRequestRs.from(requestRepository.save(req));
     }
 
+    @Transactional(readOnly = true)
+    public List<StatusRequestRs> getAllRequestsByUserId(Long userId) {
+        return requestRepository.findByUserId(userId).stream()
+                .map(StatusRequestRs::from)
+                .toList();
+    }
+
     public Optional<SpecialStatusUserEntity> getMaxDiscountActiveStatus(Long userId) {
         return requestRepository.findByUserIdAndStatus(userId, UserStatusRequestCondition.active).stream()
                 // Фильтруем истекшие статусы (если expireDate не указан или еще не наступил)

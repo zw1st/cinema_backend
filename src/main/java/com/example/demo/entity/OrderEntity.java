@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import com.example.demo.entity.enumeration.DiscountType;
 import com.example.demo.entity.enumeration.OrderStatus;
 
 import jakarta.persistence.Column;
@@ -39,9 +40,6 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "exchange_from_order_id")
     private Long exchangeFromOrderId; // Nullable, ссылка на старый заказ
 
-    @Column(name = "adjustment_amount", precision = 10, scale = 2)
-    private BigDecimal adjustmentAmount = BigDecimal.ZERO;
-
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
@@ -55,19 +53,31 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "applied_gift_card_id")
     private Long appliedGiftCardId;
 
+    @Column(name = "discount_type")
+    @Enumerated(EnumType.STRING)
+    private DiscountType discountType = DiscountType.NONE;
+
     public OrderEntity(BigDecimal totalAmount, BigDecimal finalPrice, Instant createdAt, UserEntity user,
-            String customerEmail, Long exchangeFromOrderId, BigDecimal adjustmentAmount, OrderStatus status,
-            BigDecimal statusDiscountCoef, Long appliedGiftCardId) {
+            String customerEmail, Long exchangeFromOrderId, OrderStatus status,
+            BigDecimal statusDiscountCoef, Long appliedGiftCardId, DiscountType discountType) {
         this.totalAmount = totalAmount;
         this.finalPrice = finalPrice;
         this.createdAt = createdAt;
         this.user = user;
         this.customerEmail = customerEmail;
         this.exchangeFromOrderId = exchangeFromOrderId;
-        this.adjustmentAmount = adjustmentAmount;
         this.status = status;
         this.statusDiscountCoef = statusDiscountCoef;
         this.appliedGiftCardId = appliedGiftCardId;
+        this.discountType = discountType;
+    }
+
+    public DiscountType getDiscountType() {
+        return discountType;
+    }
+
+    public void setDiscountType(DiscountType discountType) {
+        this.discountType = discountType;
     }
 
     public BigDecimal getStatusDiscountCoef() {
@@ -132,14 +142,6 @@ public class OrderEntity extends BaseEntity {
 
     public void setStatus(OrderStatus status) {
         this.status = status;
-    }
-
-    public BigDecimal getAdjustmentAmount() {
-        return adjustmentAmount;
-    }
-
-    public void setAdjustmentAmount(BigDecimal adjustmentAmount) {
-        this.adjustmentAmount = adjustmentAmount;
     }
 
     public Long getExchangeFromOrderId() {

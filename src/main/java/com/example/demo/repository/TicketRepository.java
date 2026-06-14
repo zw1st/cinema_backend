@@ -50,4 +50,6 @@ public interface TicketRepository extends JpaRepository<TicketEntity, Long> {
     List<TicketEntity> findByOrderIdsAndStatusIn(
             @Param("orderIds") List<Long> orderIds,
             @Param("statuses") List<TicketStatus> statuses);
+
+    List<TicketEntity> findByOrderIdAndStatusIn(Long orderId, List<TicketStatus> statuses);
 }

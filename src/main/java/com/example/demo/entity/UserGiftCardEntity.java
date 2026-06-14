@@ -25,6 +25,17 @@ public class UserGiftCardEntity extends BaseEntity {
     @Column(name = "recipient_email", nullable = false, length = 255)
     private String recipientEmail; // Почта получателя (для незарегистрированных)
 
+    @Column(name = "sender_email", nullable = false, length = 255)
+    private String senderEmail;
+
+    public String getSenderEmail() {
+        return senderEmail;
+    }
+
+    public void setSenderEmail(String senderEmail) {
+        this.senderEmail = senderEmail;
+    }
+
     @Column(name = "purchased_at", nullable = false)
     private LocalDateTime purchasedAt;
 
@@ -117,5 +128,6 @@ public class UserGiftCardEntity extends BaseEntity {
         this.expireDate = expireDate;
         this.status = status;
         this.appliedToOrder = appliedToOrder;
+        this.senderEmail = buyer.getEmail();
     }
 }

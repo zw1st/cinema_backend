@@ -30,12 +30,12 @@ public class MovieService {
 
     @Transactional(readOnly = true)
     public List<MovieRs> getAll() {
-        return MovieRs.fromList(repository.findAll());
+        return MovieRs.fromList(repository.findAllVisible());
     }
 
     @Transactional(readOnly = true)
     public List<MovieRs> getAll(String title) {
-        return MovieRs.fromList(repository.findByTitleContainingIgnoreCase(title));
+        return MovieRs.fromList(repository.searchVisible(title));
     }
 
     @Transactional(readOnly = true)

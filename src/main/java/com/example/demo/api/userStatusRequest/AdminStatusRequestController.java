@@ -1,5 +1,6 @@
 package com.example.demo.api.userStatusRequest;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.service.SpecialStatusRequestService;
@@ -29,5 +30,10 @@ public class AdminStatusRequestController {
     @PatchMapping("/{id}/decline")
     public StatusRequestRs declineRequest(@PathVariable Long id) {
         return requestService.declineRequest(id);
+    }
+
+    @GetMapping("/status-requests")
+    public List<StatusRequestRs> getMyStatusRequests(@AuthenticationPrincipal Long userId) {
+        return requestService.getAllRequestsByUserId(userId);
     }
 }
