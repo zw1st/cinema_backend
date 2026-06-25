@@ -1,5 +1,6 @@
 package com.example.demo.utils;
 
+import com.example.demo.api.userGiftCard.AdminGiftCardInstanceController;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.List;
 @Component
 public class ReservationCleanupScheduler {
 
+    private final AdminGiftCardInstanceController adminGiftCardInstanceController;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final TicketRepository ticketRepository;
@@ -28,11 +30,13 @@ public class ReservationCleanupScheduler {
 
     public ReservationCleanupScheduler(OrderRepository orderRepository,
             TicketRepository ticketRepository,
-            AppProperties appProperties, OrderService orderService) {
+            AppProperties appProperties, OrderService orderService,
+            AdminGiftCardInstanceController adminGiftCardInstanceController) {
         this.orderRepository = orderRepository;
         this.ticketRepository = ticketRepository;
         this.appProperties = appProperties;
         this.orderService = orderService;
+        this.adminGiftCardInstanceController = adminGiftCardInstanceController;
     }
 
     @Scheduled(fixedDelay = 60_000) // 🔹 Запуск каждую минуту
@@ -45,6 +49,16 @@ public class ReservationCleanupScheduler {
                 .findExpiredPendingOrders(OrderStatus.PENDING, threshold);
         if (expiredOrders.isEmpty())
             return;
+
+        List<OrderEntity> parentaOrders = orderRepository
+                .findAllById(expiredOrders.stream().map(OrderEntity::getExchangeFromOrderId).toList());
+        for (OrderEntity parentOrder : parentaOrders) {
+            for (TicketEntity ticket : parentOrder.getTickets()) {
+                if (ticket.getStatus() == TicketStatus.EXCHANGING) {
+                    ticket.setStatus(TicketStatus.PAID);
+                }
+            }
+        }
 
         List<Long> orderIds = expiredOrders.stream().map(OrderEntity::getId).toList();
         List<TicketEntity> expiredTickets = ticketRepository
@@ -63,6 +77,8 @@ public class ReservationCleanupScheduler {
 
         // 4. Отменяем заказы
         expiredOrders.forEach(o -> o.setStatus(OrderStatus.CANCELLED));
+        expiredOrders.forEach(o -> o.setTotalAmount(BigDecimal.ZERO)); // Сбрасываем финальную цену заказа
+        expiredOrders.forEach(o -> o.setAppliedGiftCardId(null)); // Сбрасываем финальную цену заказа
 
         expiredOrders.forEach(o -> o.setFinalPrice(BigDecimal.ZERO)); // Сбрасываем финальную цену заказа
 

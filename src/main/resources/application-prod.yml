@@ -14,6 +14,8 @@ spring:
             ddl-auto: update
 
 logging:
+    file:
+        name: logs/cinema.log
     level:
         ru:
             ulstu:
