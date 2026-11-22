@@ -47,6 +47,16 @@ configurations {
      mockitoAgent
 }
 
+checkstyle {
+    toolVersion = '10.26.1'   // при желании возьмите свежее с Maven Central
+    configFile = file('config/checkstyle/checkstyle.xml')
+    ignoreFailures = true     // пока код не приведён к стилю, сборку не валим
+}
+
+jacoco {
+    toolVersion = '0.8.14'
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
@@ -87,3 +97,37 @@ tasks.named("test") {
 }
 
 //apply from: "build.migrations.gradle"
+
+// Unit-тесты: всё, что без тега "integration"
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
+}
+
+// Интеграционные тесты: только с тегом "integration"
+tasks.register('integrationTest', Test) {
+    group = 'verification'
+    description = 'Runs integration tests'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    shouldRunAfter tasks.named('test')
+}
+
+// Единый отчёт покрытия по unit + integration
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test'), tasks.named('integrationTest')
+    executionData tasks.named('test'), tasks.named('integrationTest')
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('integrationTest')
+    finalizedBy tasks.named('jacocoTestReport')
+}
