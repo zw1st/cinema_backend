@@ -47,11 +47,11 @@ configurations {
      mockitoAgent
 }
 
-checkstyle {
-    toolVersion = '10.26.1'   // при желании возьмите свежее с Maven Central
-    configFile = file('config/checkstyle/checkstyle.xml')
-    ignoreFailures = true     // пока код не приведён к стилю, сборку не валим
-}
+// checkstyle {
+//     toolVersion = '10.26.1'   // при желании возьмите свежее с Maven Central
+//     configFile = file('config/checkstyle/checkstyle.xml')
+//     ignoreFailures = true     // пока код не приведён к стилю, сборку не валим
+// }
 
 jacoco {
     toolVersion = '0.8.14'
@@ -117,10 +117,14 @@ tasks.register('integrationTest', Test) {
     shouldRunAfter tasks.named('test')
 }
 
-// Единый отчёт покрытия по unit + integration
 tasks.named('jacocoTestReport') {
     dependsOn tasks.named('test'), tasks.named('integrationTest')
-    executionData tasks.named('test'), tasks.named('integrationTest')
+
+    // Берём .exec-файлы, которые JaCoCo создаёт для каждой Test-задачи
+    executionData.setFrom(
+        fileTree(layout.buildDirectory).include('jacoco/*.exec')
+    )
+
     reports {
         xml.required = true
         html.required = true
