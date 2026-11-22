@@ -1,0 +1,61 @@
+apply plugin: "org.liquibase.gradle"
+
+logger.quiet("Configure migrations generator")
+
+ext {
+    picocliVersion = "4.7.7"
+    
+    timestamp = new Date().format("yyyy-MM-dd-HHmmss")
+}
+
+liquibase {
+    activities {
+        main {
+            changelogFile "db/master.yml"
+            url "jdbc:h2:file:./data"
+            username "sa"
+            password "sa"
+            referenceUrl "hibernate:spring:com.example.demo.entity?dialect=org.hibernate.dialect.H2Dialect"
+            logLevel "warn"
+        }
+    }
+}
+update.dependsOn processResources
+
+dependencies {
+    liquibaseRuntime "org.liquibase.ext:liquibase-hibernate6:${liquibaseVersion}"
+    liquibaseRuntime "info.picocli:picocli:${picocliVersion}"
+    liquibaseRuntime sourceSets.main.runtimeClasspath
+    liquibaseRuntime sourceSets.main.output
+}
+
+tasks.register("generateFull") {
+    group = "migrations"
+    description = "Generate changelog from existing database"
+    doFirst(){
+        liquibase {
+            activities {
+                main {
+                    changeLogFile "src/main/resources/db/generated-full-${timestamp}.yml"
+                }
+            }
+        }
+    }
+    finalizedBy generateChangelog
+}
+
+tasks.register("generateDiff") {
+    group = "liquibase"
+    description = "Generate diff between DB and JPA entities"
+    doFirst(){
+        liquibase {
+            activities {
+                main {
+                    changeLogFile "src/main/resources/db/generated-diff-${timestamp}.yml"
+                }
+            }
+        }
+    }
+    finalizedBy diffChangelog
+}
+diffChangelog.dependsOn compileJava

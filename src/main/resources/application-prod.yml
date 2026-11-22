@@ -1,0 +1,31 @@
+spring:
+    application:
+        name: cinema_backend
+    main:
+        banner-mode: "off"
+    datasource:
+        url: jdbc:postgresql://127.0.0.1:5433/absolute_cinema
+        username: postgres
+        password: postgres21
+        driver-class-name: org.postgresql.Driver
+    jpa:
+        show-sql: false
+        hibernate:
+            ddl-auto: update
+
+logging:
+    file:
+        name: logs/cinema.log
+    level:
+        ru:
+            ulstu:
+                is:
+                    server: DEBUG
+        org:
+            h2: DEBUG
+server:
+    address: 0.0.0.0
+    port: 8080
+
+firebase:
+    enabled: true
