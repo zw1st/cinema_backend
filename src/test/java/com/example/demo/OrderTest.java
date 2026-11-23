@@ -1,3 +1,5 @@
+package com.example.demo;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +23,7 @@ import com.example.demo.configuration.AppProperties;
 import com.example.demo.entity.OrderEntity;
 import com.example.demo.entity.*;
 import com.example.demo.entity.UserEntity;
+import com.example.demo.entity.enumeration.DiscountType;
 import com.example.demo.entity.enumeration.OrderStatus;
 import com.example.demo.entity.enumeration.TicketStatus;
 import com.example.demo.repository.OrderRepository;
@@ -37,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.any;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -71,6 +75,7 @@ class OrderServiceTest {
     private static final Long USER_ID = 42L;
     private static final Long SESSION_ID = 1L;
     private static final Long HALL_ID = 7L;
+    private static final Long CARD_ID = 100L;
 
     @Test
     void createOrder_withFreeSeatsAndNoDiscount_createsPendingOrderWithCorrectPrice() {
@@ -143,4 +148,90 @@ class OrderServiceTest {
         // then: сервисы скидок не должны вызываться
         verifyNoInteractions(specialStatusRequestService, userGiftCardService, userGiftCardRepository);
     }
+
+    private UserEntity givenUserSessionAndSingleSeat(BigDecimal basePrice) {
+        UserEntity user = new UserEntity("user@test.com", "firebase-uid", LocalDateTime.now(), "User", null);
+        user.setId(USER_ID);
+
+        HallEntity hall = new HallEntity("Hall 1", 10, 10);
+        hall.setId(HALL_ID);
+
+        MovieEntity movie = new MovieEntity("Test Movie", LocalDate.of(2025, 1, 1), true, 8.0,
+                (short) 120, "16+", "Description", "http://poster.url", "Drama", "Actors", "Director");
+
+        SessionEntity session = new SessionEntity(movie, hall,
+                LocalDate.now().plusDays(1), LocalTime.of(18, 0), LocalTime.of(20, 0), basePrice);
+        session.setId(SESSION_ID);
+
+        SeatEntity seat = new SeatEntity(1, 5, new SeatType("STANDARD", new BigDecimal("1.0")), hall);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+        when(seatRepository.findByHallIdAndRowNumAndColNum(HALL_ID, 1, 5)).thenReturn(Optional.of(seat));
+        return user;
+    }
+
+    /**
+     * Готовит карту с заданным номиналом: и валидация, и поиск номинала возвращают
+     * её.
+     */
+    private void givenGiftCard(UserEntity user, BigDecimal nominal) {
+        GiftCardEntity giftCard = new GiftCardEntity(nominal, true);
+
+        UserGiftCardEntity userCard = new UserGiftCardEntity(giftCard, user, user, null,
+                LocalDateTime.now(), LocalDate.now().plusYears(1), null, null);
+        userCard.setId(CARD_ID);
+
+        when(userGiftCardService.validateCard(CARD_ID, USER_ID)).thenReturn(userCard);
+        when(userGiftCardRepository.findById(CARD_ID)).thenReturn(Optional.of(userCard));
+    }
+
+    @Test
+    void createOrder_withGiftCard_subtractsNominalFromFinalPrice() {
+        // given: билет 1500, карта на 1000
+        UserEntity user = givenUserSessionAndSingleSeat(new BigDecimal("1500"));
+        givenGiftCard(user, new BigDecimal("1000"));
+
+        CreateOrderRq rq = new CreateOrderRq(SESSION_ID, false, CARD_ID, List.of(new SeatCoordRq(1, 5)));
+
+        // when
+        OrderRs result = orderService.createOrder(rq, USER_ID);
+
+        // then: ответ
+        assertThat(result.status()).isEqualTo("PENDING");
+        assertThat(result.discountType()).isEqualTo("GIFT_CARD");
+        assertThat(result.appliedGiftCardId()).isEqualTo(CARD_ID);
+        assertThat(result.statusDiscountCoef()).isEqualTo(new BigDecimal(1));
+        assertThat(result.totalAmount()).isEqualByComparingTo("1500"); // сумма по местам не меняется
+        assertThat(result.finalPrice()).isEqualByComparingTo("500"); // 1500 - 1000
+
+        // then: в базу ушёл заказ с привязанной картой
+        verify(orderRepository).existsByAppliedGiftCardIdAndStatus(CARD_ID, OrderStatus.PENDING);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertThat(orderCaptor.getValue().getAppliedGiftCardId()).isEqualTo(CARD_ID);
+        assertThat(orderCaptor.getValue().getDiscountType()).isEqualTo(DiscountType.GIFT_CARD);
+
+        verifyNoInteractions(specialStatusRequestService);
+    }
+
+    @Test
+    void createOrder_whenGiftCardNominalExceedsTotal_finalPriceIsZeroNotNegative() {
+        // given: билет 400, карта на 1000 (400 - 1000 = -600, ожидаем 0)
+        UserEntity user = givenUserSessionAndSingleSeat(new BigDecimal("400"));
+        givenGiftCard(user, new BigDecimal("1000"));
+
+        CreateOrderRq rq = new CreateOrderRq(SESSION_ID, false, CARD_ID, List.of(new SeatCoordRq(1, 5)));
+
+        // when
+        OrderRs result = orderService.createOrder(rq, USER_ID);
+
+        // then
+        assertThat(result.discountType()).isEqualTo("GIFT_CARD");
+        assertThat(result.totalAmount()).isEqualByComparingTo("400");
+        assertThat(result.finalPrice()).isEqualByComparingTo("0");
+        assertThat(result.finalPrice().signum()).isGreaterThanOrEqualTo(0);
+
+        verify(orderRepository).save(any(OrderEntity.class));
+    }
+
 }

@@ -22,9 +22,7 @@ import java.util.List;
 @Component
 public class ReservationCleanupScheduler {
 
-    private final AdminGiftCardInstanceController adminGiftCardInstanceController;
     private final OrderRepository orderRepository;
-    private final OrderService orderService;
     private final TicketRepository ticketRepository;
     private final AppProperties appProperties;
 
@@ -35,8 +33,6 @@ public class ReservationCleanupScheduler {
         this.orderRepository = orderRepository;
         this.ticketRepository = ticketRepository;
         this.appProperties = appProperties;
-        this.orderService = orderService;
-        this.adminGiftCardInstanceController = adminGiftCardInstanceController;
     }
 
     @Scheduled(fixedDelay = 60_000) // 🔹 Запуск каждую минуту
