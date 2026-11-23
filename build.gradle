@@ -47,11 +47,17 @@ configurations {
      mockitoAgent
 }
 
-// checkstyle {
-//     toolVersion = '10.26.1'   // при желании возьмите свежее с Maven Central
-//     configFile = file('config/checkstyle/checkstyle.xml')
-//     ignoreFailures = true     // пока код не приведён к стилю, сборку не валим
-// }
+checkstyle {
+    toolVersion = '10.26.1'   // при желании возьмите свежее с Maven Central
+    configFile = file('config/checkstyle/checkstyle.xml')
+    ignoreFailures = true     // пока код не приведён к стилю, сборку не валим
+}
+
+def checkstyleEnabled = project.findProperty('checkstyleEnabled')?.toBoolean() ?: false
+
+tasks.withType(Checkstyle).configureEach {
+    enabled = checkstyleEnabled
+}
 
 jacoco {
     toolVersion = '0.8.14'
