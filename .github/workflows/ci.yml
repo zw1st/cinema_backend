@@ -31,3 +31,45 @@ jobs:
                       build/reports/tests/
                       build/reports/jacoco/
                       build/test-results/
+
+            - name: Collect quality metrics
+              run: |
+                  echo "## Quality Metrics" >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+
+                  echo "### 1. Lint errors (Checkstyle)" >> "$GITHUB_STEP_SUMMARY"
+                  ./gradlew checkstyleMain
+                  if [ -f "build/reports/checkstyle/main.xml" ]; then
+                    LINT_ERRORS=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('build/reports/checkstyle/main.xml'); print(sum(1 for _ in tree.iter('error')))" 2>/dev/null || echo "0")
+                  else
+                    LINT_ERRORS="0"
+                  fi
+                  echo "Checkstyle violations: **$LINT_ERRORS**" >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+
+                  echo "### 2. Cyclomatic complexity (PMD)" >> "$GITHUB_STEP_SUMMARY"
+                  ./gradlew pmdMain || true
+                  echo '```text' >> "$GITHUB_STEP_SUMMARY"
+                  if [ -f "build/reports/pmd/main.xml" ]; then
+                    PMD_VIOLATIONS=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('build/reports/pmd/main.xml'); print(sum(1 for _ in tree.iter('violation')))" 2>/dev/null || echo "0")
+                    echo "PMD violations: $PMD_VIOLATIONS"
+                  else
+                    echo "No PMD report found"
+                  fi
+                  echo '```' >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+
+                  echo "### 3. Commit frequency" >> "$GITHUB_STEP_SUMMARY"
+                  COMMITS=$(git rev-list --count --since="30 days ago" HEAD)
+                  echo "Commits during last 30 days: **$COMMITS**" >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+
+                  echo "### 4. Commit size" >> "$GITHUB_STEP_SUMMARY"
+                  echo '```text' >> "$GITHUB_STEP_SUMMARY"
+                  git diff --shortstat HEAD~1 HEAD || true
+                  git diff --shortstat HEAD~1 HEAD >> "$GITHUB_STEP_SUMMARY" || true
+                  echo '```' >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+
+                  echo "### 5. Pipeline duration" >> "$GITHUB_STEP_SUMMARY"
+                  echo "Pipeline duration is provided by GitHub Actions for this workflow run." >> "$GITHUB_STEP_SUMMARY"
