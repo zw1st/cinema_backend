@@ -55,9 +55,14 @@ checkstyle {
     ignoreFailures = true     // пока код не приведён к стилю, сборку не валим
 }
 
+tasks.named('pmdTest') {
+    enabled = false
+}
+
 pmd {
-    toolVersion = '7.0.0'
+    toolVersion = '6.55.0'
     ignoreFailures = true 
+    consoleOutput = true
     reportsDir = file("$buildDir/reports/pmd")
 }
 

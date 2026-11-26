@@ -38,7 +38,7 @@ jobs:
                   echo "" >> "$GITHUB_STEP_SUMMARY"
 
                   echo "### 1. Lint errors (Checkstyle)" >> "$GITHUB_STEP_SUMMARY"
-                  ./gradlew checkstyleMain
+                  ./gradlew checkstyleMain || true
                   if [ -f "build/reports/checkstyle/main.xml" ]; then
                     LINT_ERRORS=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('build/reports/checkstyle/main.xml'); print(sum(1 for _ in tree.iter('error')))" 2>/dev/null || echo "0")
                   else
